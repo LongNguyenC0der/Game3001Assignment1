@@ -14,9 +14,11 @@ public class PlaySceneGameMode : MonoBehaviour
     private const float BOUNDARY = 7.0f;
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject targetPrefab;
+    [SerializeField] private GameObject enemyPrefab;
     private GameObject player;
     private GameObject target;
-    private float moveSpeed = 2.0f;
+    private GameObject enemy;
+    private float moveSpeed = 3.0f;
     private float turnSpeed = 100.0f;
     private EPlayMode playMode;
 
@@ -24,8 +26,10 @@ public class PlaySceneGameMode : MonoBehaviour
     {
         player = Instantiate<GameObject>(playerPrefab, new Vector3(0.0f, 0.0f, 0.0f), Quaternion.identity);
         target = Instantiate<GameObject>(targetPrefab, new Vector3(0.0f, 0.0f, 0.0f), Quaternion.identity);
+        enemy = Instantiate<GameObject>(enemyPrefab, new Vector3(0.0f, 0.0f, 0.0f), Quaternion.identity);
         player.SetActive(false);
         target.SetActive(false);
+        enemy.SetActive(false);
     }
 
     private void Update()
@@ -35,18 +39,17 @@ public class PlaySceneGameMode : MonoBehaviour
             playMode = EPlayMode.Standby;
             player.SetActive(false);
             target.SetActive(false);
+            enemy.SetActive(false);
         }
         else if (Input.GetKeyDown(KeyCode.Keypad1) || Input.GetKeyDown(KeyCode.Alpha1))
         {
             playMode = EPlayMode.LinearSeek;
-            player.transform.position = GetRandomPosition();
-            target.transform.position = GetRandomPosition();
-            player.SetActive(true);
-            target.SetActive(true);
+            SetUpActors(playMode);
         }
         else if (Input.GetKeyDown(KeyCode.Keypad2) || Input.GetKeyDown(KeyCode.Alpha2))
         {
-            Debug.Log("Flee");
+            playMode = EPlayMode.LinearFlee;
+            SetUpActors(playMode);
         }
         else if (Input.GetKeyDown(KeyCode.Keypad3) || Input.GetKeyDown(KeyCode.Alpha3))
         {
@@ -65,6 +68,38 @@ public class PlaySceneGameMode : MonoBehaviour
                 LinearSeek();
                 break;
             case EPlayMode.LinearFlee:
+                LinearFlee();
+                break;
+            case EPlayMode.LinearArrive:
+                break;
+            case EPlayMode.LinearAvoid:
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void SetUpActors(EPlayMode playMode)
+    {
+        player.SetActive(false);
+        target.SetActive(false);
+        enemy.SetActive(false);
+
+        switch (playMode)
+        {
+            case EPlayMode.Standby:
+                break;
+            case EPlayMode.LinearSeek:
+                player.transform.position = GetRandomPosition();
+                target.transform.position = GetRandomPosition();
+                player.SetActive(true);
+                target.SetActive(true);
+                break;
+            case EPlayMode.LinearFlee:
+                player.transform.position = GetRandomPosition();
+                enemy.transform.position = GetRandomPosition();
+                player.SetActive(true);
+                enemy.SetActive(true);
                 break;
             case EPlayMode.LinearArrive:
                 break;
@@ -85,12 +120,32 @@ public class PlaySceneGameMode : MonoBehaviour
         Vector3 direction = (target.transform.position - player.transform.position).normalized;
         Vector3 distanceToMove = direction * moveSpeed * Time.deltaTime;
         player.transform.position += distanceToMove;
-        Turning();
+        Turning(direction);
     }
 
-    private void Turning()
+    private void LinearFlee()
     {
-        Vector3 direction = (target.transform.position - player.transform.position).normalized;
+        Vector3 direction = (player.transform.position - enemy.transform.position).normalized;
+        Vector3 distanceToMove = direction * moveSpeed * Time.deltaTime;
+        Vector3 newPosition = player.transform.position + distanceToMove;
+
+        float x = newPosition.x;
+        float z = newPosition.z;
+
+        if (player.transform.position.x >= BOUNDARY) x = BOUNDARY;
+        else if (player.transform.position.x <= -BOUNDARY) x = -BOUNDARY;
+        if (player.transform.position.z >= BOUNDARY) z = BOUNDARY;
+        else if (player.transform.position.z <= -BOUNDARY) z = -BOUNDARY;
+
+        newPosition.x = x;
+        newPosition.z = z;
+        player.transform.position = newPosition;
+
+        Turning(direction);
+    }
+
+    private void Turning(Vector3 direction)
+    {
         float currentAngle = player.transform.eulerAngles.y;
         float desiredAngle = Vector3.SignedAngle(player.transform.forward, direction, Vector3.up); // Return relative angle
         float newAngle = Mathf.MoveTowardsAngle(currentAngle, currentAngle + desiredAngle, turnSpeed * Time.deltaTime); // 2 absolute angles
