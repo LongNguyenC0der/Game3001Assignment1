@@ -104,12 +104,14 @@ public class PlaySceneGameMode : MonoBehaviour
                 target.transform.position = GetRandomPosition();
                 player.SetActive(true);
                 target.SetActive(true);
+                SoundManager.Instance.PlayEffectSound();
                 break;
             case EPlayMode.LinearFlee:
                 player.transform.position = GetRandomPosition();
                 enemy.transform.position = GetRandomPosition();
                 player.SetActive(true);
                 enemy.SetActive(true);
+                SoundManager.Instance.PlayEffectSound();
                 break;
             case EPlayMode.LinearAvoid:
                 player.transform.position = GetRandomPosition();
@@ -118,6 +120,7 @@ public class PlaySceneGameMode : MonoBehaviour
                 player.SetActive(true);
                 target.SetActive(true);
                 enemy.SetActive(true);
+                SoundManager.Instance.PlayEffectSound();
                 break;
             default:
                 break;
@@ -203,6 +206,10 @@ public class PlaySceneGameMode : MonoBehaviour
             Vector3 distanceToMove = desiredVelocity * Time.deltaTime;
             player.transform.position += distanceToMove;
             Turning(desiredVelocity);
+        }
+        else
+        {
+            Turning(seekVelocity);
         }
     }
 
