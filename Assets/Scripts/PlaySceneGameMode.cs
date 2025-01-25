@@ -15,7 +15,8 @@ public class PlaySceneGameMode : MonoBehaviour
     private const float MOVE_SPEED = 3.0f;
     private const float TURN_SPEED = 100.0f;
     private const float RADIUS = 1.0f;
-
+    private const float ENEMY_RADIUS = 2.0f;
+    private const float TIME_TO_TARGET = 2.0f;
 
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private GameObject targetPrefab;
@@ -23,12 +24,6 @@ public class PlaySceneGameMode : MonoBehaviour
     private GameObject player;
     private GameObject target;
     private GameObject enemy;
-    
-    
-
-    // for arrive algorithm
-    
-    private float timeToTarget = 2.0f;
 
     private EPlayMode playMode;
 
@@ -68,7 +63,8 @@ public class PlaySceneGameMode : MonoBehaviour
         }
         else if (Input.GetKeyDown(KeyCode.Keypad4) || Input.GetKeyDown(KeyCode.Alpha4))
         {
-            Debug.Log("Avoid");
+            playMode = EPlayMode.LinearAvoid;
+            SetUpActors(playMode);
         }
 
         switch (playMode)
@@ -85,6 +81,7 @@ public class PlaySceneGameMode : MonoBehaviour
                 LinearArrive();
                 break;
             case EPlayMode.LinearAvoid:
+                LinearAvoid();
                 break;
             default:
                 break;
@@ -115,6 +112,12 @@ public class PlaySceneGameMode : MonoBehaviour
                 enemy.SetActive(true);
                 break;
             case EPlayMode.LinearAvoid:
+                player.transform.position = GetRandomPosition();
+                target.transform.position = GetRandomPosition();
+                enemy.transform.position = player.transform.position + ((target.transform.position - player.transform.position) / 2.0f);
+                player.SetActive(true);
+                target.SetActive(true);
+                enemy.SetActive(true);
                 break;
             default:
                 break;
@@ -160,15 +163,46 @@ public class PlaySceneGameMode : MonoBehaviour
         Vector3 distance = target.transform.position - player.transform.position;
         if (distance.magnitude > RADIUS)
         {
-            distance /= timeToTarget;
+            distance /= TIME_TO_TARGET;
             if (distance.magnitude > MOVE_SPEED)
             {
                 distance = distance.normalized * MOVE_SPEED;
             }
-            //Vector3 direction = distance.normalized;
             Vector3 distanceToMove = distance * Time.deltaTime;
             player.transform.position += distanceToMove;
             Turning(distance);
+        }
+    }
+
+    private void LinearAvoid()
+    {
+        float weight = 1.0f;
+        float distanceToEnemy = Vector3.Distance(player.transform.position, enemy.transform.position);
+        Vector3 seekVelocity = target.transform.position - player.transform.position;
+        Vector3 fleeVelocity = player.transform.position - enemy.transform.position;
+
+        if (seekVelocity.magnitude > RADIUS)
+        {
+            if (distanceToEnemy < ENEMY_RADIUS)
+            {
+                weight = Mathf.Clamp01(distanceToEnemy - RADIUS) / ENEMY_RADIUS;
+            }
+            float magnitute = seekVelocity.magnitude;
+            seekVelocity = seekVelocity.normalized * weight;
+            fleeVelocity = fleeVelocity.normalized * (1.0f - weight);
+
+            Vector3 desiredVelocity = (seekVelocity + fleeVelocity).normalized;
+            desiredVelocity *= magnitute;
+            desiredVelocity /= TIME_TO_TARGET;
+            
+            if (desiredVelocity.magnitude > MOVE_SPEED)
+            {
+                desiredVelocity = desiredVelocity.normalized * MOVE_SPEED;
+            }
+
+            Vector3 distanceToMove = desiredVelocity * Time.deltaTime;
+            player.transform.position += distanceToMove;
+            Turning(desiredVelocity);
         }
     }
 
